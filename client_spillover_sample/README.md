@@ -1,14 +1,12 @@
 # GPT image 클라이언트 Spillover 샘플
 
-[검증 방안](../docs/gpt-image-client-spillover-validation.md)에 맞춰 **Base HTTP 429 → 지정한 PAYG 배포로 한 번 전환**하는 이미지 편집 샘플입니다.
+[검증 방안](../docs/gpt-image-client-spillover-validation.md)에 맞춰 **Base HTTP 429 → 다른 PAYG endpoint로 한 번 전환**하는 이미지 편집 샘플입니다. 아래 설정은 서로 다른 두 리소스를 사용하는 예시입니다.
 
-- `BASE_ENDPOINT` / `SPILLOVER_ENDPOINT`: 각 리소스의 `/openai/v1/` endpoint. 같은 리소스이면 같은 URL 사용 가능
+- `BASE_ENDPOINT` / `SPILLOVER_ENDPOINT`: 서로 다른 리소스의 `/openai/v1/` endpoint
 - `BASE_DEPLOYMENT` / `SPILLOVER_DEPLOYMENT`: 각 리소스의 배포 이름
 - SDK 자동 재시도 없음(`max_retries=0`), 429 외 오류·연결 실패·타임아웃은 전환하지 않음
 - Spillover도 실패하면 오류 반환. 한 작업에서 최대 두 번 호출
 - 전환 시 이미지 파일을 다시 열어 같은 이미지·프롬프트를 전송
-
-같은 endpoint를 사용하면 배포 이름을 서로 다르게 지정합니다. 동일 endpoint·동일 배포로의 전환은 막습니다.
 
 ## 준비
 
@@ -20,7 +18,7 @@ source .venv/bin/activate
 python -m pip install -r requirements.txt
 ```
 
-두 대상에 동일 모델·버전을 배포하고 인증·호출 권한을 확인합니다. 검증용 Base PAYG는 **1 RPM**으로 설정하고, Spillover PAYG는 테스트 트래픽을 받을 여유 용량을 확보합니다. 서버 측 Spillover는 설정하지 않습니다.
+두 리소스에 동일 모델·버전을 배포하고 인증·호출 권한을 확인합니다. 검증용 Base PAYG는 **1 RPM**으로 설정하고, Spillover PAYG는 테스트 트래픽을 받을 여유 용량을 확보합니다. 서버 측 Spillover는 설정하지 않습니다.
 
 ```bash
 export BASE_ENDPOINT="https://<base-resource>.cognitiveservices.azure.com/openai/v1/"
