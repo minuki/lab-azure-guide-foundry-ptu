@@ -15,9 +15,11 @@
 | 역할 | 구성 |
 |---|---|
 | Base endpoint | **1 RPM(분당 1회)으로 배포한 테스트용 PAYG** |
-| Spillover endpoint | 다른 리소스의 동일 모델·버전 배포. 테스트 요청을 처리할 여유 용량 확보 |
+| Spillover endpoint | 동일 모델·버전의 별도 PAYG 배포. 테스트 요청을 처리할 여유 용량 확보 |
 
 코드에 두 endpoint와 각 배포 이름을 별도로 지정합니다. 인증 정보도 각 리소스에 맞게 설정합니다.
+
+같은 리소스의 서로 다른 배포로도 검증할 수 있습니다. 이 경우 두 endpoint URL은 같고, `BASE_DEPLOYMENT`와 `SPILLOVER_DEPLOYMENT`를 다르게 지정합니다. 같은 endpoint의 같은 배포로 전환하는 설정은 허용하지 않습니다.
 
 ```text
 Base 성공     → 결과 반환
@@ -87,7 +89,7 @@ Base를 **1 RPM**으로 배포한 뒤, 10초 간격으로 최대 6회 요청하�
 | 상황 | 기대 동작 |
 |---|---|
 | Base 성공 | Spillover를 호출하지 않음 |
-| Base HTTP 429 | 다른 endpoint로 동일 요청을 한 번 전송하고 성공 결과 반환 |
+| Base HTTP 429 | Spillover 배포로 동일 요청을 한 번 전송하고 성공 결과 반환 |
 | Base의 429 외 오류 | 전환하지 않고 오류 반환 |
 | Spillover도 실패 | 오류 반환. 무한 재시도나 Base로 재전환하지 않음 |
 
@@ -104,6 +106,6 @@ response route=spillover HTTP=200 ...
 completed route=spillover output=... bytes=...
 ```
 
-**서로 다른 endpoint를 호출했는지, 최종 결과가 반환됐는지, 한 작업의 API 호출이 최대 두 번인지** 확인합니다.
+**Base와 Spillover의 endpoint·배포 이름 조합이 다르고, 최종 결과가 반환됐으며, 한 작업의 API 호출이 최대 두 번인지** 확인합니다. 동일 endpoint를 사용한다면 로그의 `deployment` 값으로 구분합니다.
 
-클라이언트 Spillover는 애플리케이션이 다른 endpoint로 요청을 다시 보내는 방식입니다. `x-ms-is-spilled-over`는 서버 내부 전환을 나타내므로, 이 값이 `false`여도 클라이언트 전환은 성공할 수 있습니다. 성공 여부는 **클라이언트의 호출 로그와 최종 결과**로 판단합니다.
+클라이언트 Spillover는 애플리케이션이 Spillover 배포로 요청을 다시 보내는 방식입니다. `x-ms-is-spilled-over`는 서버 내부 전환을 나타내므로, 이 값이 `false`여도 클라이언트 전환은 성공할 수 있습니다. 성공 여부는 **클라이언트의 호출 로그와 최종 결과**로 판단합니다.

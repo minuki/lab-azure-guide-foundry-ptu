@@ -116,8 +116,11 @@ def parse_args() -> argparse.Namespace:
         parser.error(str(error))
     if not args.base_deployment.strip() or not args.spillover_deployment.strip():
         parser.error("Both deployment names must be configured")
-    if urlsplit(args.base_endpoint).hostname == urlsplit(args.spillover_endpoint).hostname:
-        parser.error("This sample requires two different resource endpoints")
+    if (
+        urlsplit(args.base_endpoint).hostname == urlsplit(args.spillover_endpoint).hostname
+        and args.base_deployment.strip() == args.spillover_deployment.strip()
+    ):
+        parser.error("Base and spillover must differ by resource endpoint or deployment name")
     if not args.image.is_file() or not args.prompt.is_file():
         parser.error("Input image and prompt files must exist")
     if not 0 < args.timeout < float("inf"):

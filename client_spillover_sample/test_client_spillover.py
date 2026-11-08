@@ -14,14 +14,14 @@ import client_spillover as sample
 
 
 class ClientSpilloverTests(unittest.TestCase):
-    def run_case(self, base_result: int | Exception, spillover_status: int = 200, base_code: str | None = None):
+    def run_case(self, base_result: int | Exception, spillover_status: int = 200, base_code: str | None = None, shared_endpoint: bool = False):
         self.calls: list[httpx.Request] = []
         self.payloads: list[bytes] = []
 
         def handler(request: httpx.Request) -> httpx.Response:
             self.calls.append(request)
             self.payloads.append(request.read())
-            if request.url.host == "base.example":
+            if b"\r\n\r\nbase-model\r\n" in self.payloads[-1]:
                 if isinstance(base_result, Exception):
                     raise base_result
                 status = base_result
@@ -48,7 +48,8 @@ class ClientSpilloverTests(unittest.TestCase):
                 base_url="https://base.example/openai/v1/", api_key="base-test-key",
                 max_retries=0, http_client=httpx.Client(transport=httpx.MockTransport(handler)),
             ) as base_client, OpenAI(
-                base_url="https://spillover.example/openai/v1/", api_key="spillover-test-key",
+                base_url="https://base.example/openai/v1/" if shared_endpoint else "https://spillover.example/openai/v1/",
+                api_key="spillover-test-key",
                 max_retries=0, http_client=httpx.Client(transport=httpx.MockTransport(handler)),
             ) as spillover_client:
                 return sample.edit_with_spillover(
@@ -86,6 +87,14 @@ class ClientSpilloverTests(unittest.TestCase):
                 self.run_case(status)
             self.assertEqual(error.exception.status_code, status)
             self.assertEqual(len(self.calls), 1)
+
+    def test_same_endpoint_different_deployments_spill_over(self) -> None:
+        _, route = self.run_case(429, shared_endpoint=True)
+        self.assertEqual(route, "spillover")
+        self.assertEqual(len(self.calls), 2)
+        self.assertEqual(self.calls[0].url, self.calls[1].url)
+        self.assertIn(b"base-model", self.payloads[0])
+        self.assertIn(b"spillover-model", self.payloads[1])
 
     def test_transport_error_and_timeout_do_not_spillover(self) -> None:
         for error in (httpx.ConnectError("test connection failure"), httpx.ReadTimeout("test timeout")):
@@ -131,6 +140,19 @@ class ClientSpilloverTests(unittest.TestCase):
                 parsed = sample.parse_args()
             self.assertEqual(parsed.image, image)
             self.assertEqual(parsed.prompt, prompt)
+            shared = [
+                "client_spillover.py",
+                "--base-endpoint", "https://base.example/openai/v1/",
+                "--spillover-endpoint", "https://base.example/openai/v1/",
+                "--image", str(image), "--prompt", str(prompt),
+                "--base-deployment", "base-model", "--spillover-deployment", "spillover-model",
+            ]
+            with patch("sys.argv", shared):
+                sample.parse_args()
+            with patch("sys.argv", shared[:-1] + ["base-model"]), patch("sys.stderr", new_callable=io.StringIO):
+                with self.assertRaises(SystemExit) as error:
+                    sample.parse_args()
+                self.assertEqual(error.exception.code, 2)
 
 
 if __name__ == "__main__":
