@@ -394,6 +394,8 @@ python foundry-model-ptu-deploy-429-spillover.py \
 
 #### 3.3.3. 클라이언트에서 spillover 처리
 
+GPT image 모델에서 **HTTP 429에만 전환하는 두 endpoint 구성**은 [Client Spillover 검증 방안](docs/gpt-image-client-spillover-validation.md)을 참고한다. PTU 대신 **1 RPM PAYG를 Base로 사용해 전환 로직을 검증**하는 방법과 [샘플 코드·테스트](client_spillover_sample/README.md)를 제공한다. 아래 기존 샘플은 모든 HTTP 오류·연결 실패를 전환하는 정책이므로 구분해서 사용한다.
+
 클라이언트가 PTU 배포의 응답을 보고 직접 전환한다. 200 이 아닌 HTTP status code 이거나 응답 자체가 오지 않으면(연결 실패・타임아웃) standard 배포로 요청을 spillover 한다.
 
 ```mermaid
